@@ -119,6 +119,7 @@ class ReleaseManager:
                 ["git", "status", "--porcelain"],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 check=True
             )
             return len(result.stdout.strip()) == 0
@@ -132,6 +133,7 @@ class ReleaseManager:
                 ["git", "log", "-1", "--pretty=format:%s"],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 check=True
             )
             return result.stdout.strip()
@@ -255,6 +257,7 @@ class ReleaseManager:
                 ["git", "log", "--oneline", "-5"],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 check=True
             )
             
