@@ -1,0 +1,37 @@
+{
+  "version": "0.1.0",
+  "version_format": "semantic",
+  "description": "RedNoteAnalyzer 版本管理配置",
+  "changelog_file": "CHANGELOG.md",
+  "version_history": [
+    {
+      "version": "0.1.0",
+      "date": "2024-01-15",
+      "type": "initial",
+      "description": "项目初始版本",
+      "changes": [
+        "支持小红书、微博、知乎、B站、抖音、百度贴吧等平台数据爬取",
+        "提供完整的数据存储和分析功能",
+        "支持多种部署方式"
+      ]
+    }
+  ],
+  "version_rules": {
+    "major": "重大功能更新或不兼容的API变更",
+    "minor": "新功能添加，向后兼容",
+    "patch": "Bug修复和小的改进"
+  },
+  "auto_increment": {
+    "enabled": true,
+    "commit_types": {
+      "feat": "minor",
+      "fix": "patch",
+      "docs": "patch",
+      "style": "patch",
+      "refactor": "patch",
+      "test": "patch",
+      "chore": "patch",
+      "breaking": "major"
+    }
+  }
+}
