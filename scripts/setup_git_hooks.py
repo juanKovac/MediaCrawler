@@ -46,18 +46,26 @@ echo "🔍 运行pre-commit检查..."
 
 # 检查Python语法
 echo "📝 检查Python语法..."
-python -m py_compile $(git diff --cached --name-only --diff-filter=ACM | grep "\.py$") 2>/dev/null
-if [ $? -ne 0 ]; then
-    echo "❌ Python语法检查失败"
-    exit 1
+py_files=$(git diff --cached --name-only --diff-filter=ACM | grep "\\.py$")
+if [ -n "$py_files" ]; then
+    python -m py_compile $py_files 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo "❌ Python语法检查失败"
+        exit 1
+    fi
+else
+    echo "📝 没有Python文件需要检查"
 fi
 
 # 检查代码风格（如果安装了flake8）
 if command -v flake8 >/dev/null 2>&1; then
     echo "🎨 检查代码风格..."
-    flake8 $(git diff --cached --name-only --diff-filter=ACM | grep "\.py$") 2>/dev/null
-    if [ $? -ne 0 ]; then
-        echo "⚠️  代码风格检查发现问题，但不阻止提交"
+    py_files=$(git diff --cached --name-only --diff-filter=ACM | grep "\\.py$")
+    if [ -n "$py_files" ]; then
+        flake8 $py_files 2>/dev/null
+        if [ $? -ne 0 ]; then
+            echo "⚠️  代码风格检查发现问题，但不阻止提交"
+        fi
     fi
 fi
 
@@ -86,7 +94,7 @@ exit 0
 # Commit message hook for RedNoteAnalyzer
 # 检查提交信息格式
 
-commit_regex='^(feat|fix|docs|style|refactor|test|chore|breaking)(\(.+\))?: .{1,50}'
+commit_regex='^(feat|fix|docs|style|refactor|test|chore|breaking)(\\(.+\\))?: .{1,50}'
 
 if ! grep -qE "$commit_regex" "$1"; then
     echo "❌ 提交信息格式不正确！"
@@ -159,7 +167,7 @@ if version_file.exists() and pyproject_file.exists():
         pyproject_content = f.read()
     
     version_json = version_config.get('version')
-    version_match = re.search(r'version\s*=\s*\"([^\"]+)\"', pyproject_content)
+    version_match = re.search(r'version\\s*=\\s*\\"([^\\"]+)\\"', pyproject_content)
     version_pyproject = version_match.group(1) if version_match else None
     
     if version_json != version_pyproject:
