@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "version_format": "semantic",
   "description": "RedNoteAnalyzer 版本管理配置",
   "changelog_file": "CHANGELOG.md",
@@ -13,6 +13,24 @@
         "支持小红书、微博、知乎、B站、抖音、百度贴吧等平台数据爬取",
         "提供完整的数据存储和分析功能",
         "支持多种部署方式"
+      ]
+    },
+    {
+      "version": "0.1.1",
+      "date": "2025-08-13",
+      "type": "patch",
+      "description": "fix: 修复Windows环境下Git钩子和发布脚本的编码问题",
+      "changes": [
+        "fix: 修复Windows环境下Git钩子和发布脚本的编码问题",
+        "feat: 添加完整的版本管理系统",
+        "docs: 添加中文文档文件",
+        "docs: update README.md",
+        "Merge pull request #700 from 2513502304/main",
+        "Merge branch 'NanmiCoder:main' into main",
+        "原始的HTTPStatusError不能捕获像ConnectError、ReadError这些异常类型，本次提交修改了捕获异常的类型为httpx模块请求异常的基类：HTTPError，以便捕获在httpx.request方法中引发的任何异常（例如ip被封，服务器拒接连接），正确处理爬取媒体被中断时并不会导致爬取文本的中断逻辑",
+        "Merge pull request #699 from 2513502304/main",
+        "添加了对媒体资源服务器的异常处理，参见 issue #691",
+        "fix: #693"
       ]
     }
   ],
