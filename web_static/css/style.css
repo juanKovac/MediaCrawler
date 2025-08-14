@@ -194,6 +194,77 @@ body {
     border-radius: 0 0 15px 15px;
 }
 
+/* 调整模态框宽度，支持手动调整 */
+.modal-xl {
+    max-width: 80% !important;
+    width: 80% !important;
+}
+
+.modal-dialog {
+    min-width: 600px !important;
+    min-height: 400px !important;
+}
+
+.modal-content {
+    resize: both !important;
+    overflow: auto !important;
+    min-width: 600px !important;
+    min-height: 400px !important;
+}
+
+/* 笔记图片样式优化 */
+.note-image {
+    max-width: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 200px !important;
+    max-height: 800px !important;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    object-fit: contain !important;
+}
+
+/* 笔记列表容器自适应高度 */
+.notes-list-container {
+    height: calc(100vh - 300px) !important;
+    min-height: 400px !important;
+    max-height: calc(100vh - 200px) !important;
+    overflow-y: auto !important;
+}
+
+/* 笔记标题样式优化 */
+.card-title {
+    font-size: 1.2rem !important;
+    font-weight: bold !important;
+}
+
+/* 笔记详情标题样式 */
+#noteDetail h5 {
+    font-size: 1.4rem !important;
+    font-weight: bold !important;
+}
+
+/* 笔记描述样式 - 支持换行 */
+.card-text {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    line-height: 1.5 !important;
+}
+
+/* 笔记详情描述样式 - 支持换行 */
+#noteDetail p {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    line-height: 1.6 !important;
+}
+
+.note-image:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
 /* 加载动画 */
 .spinner-border {
     width: 3rem;
@@ -370,6 +441,21 @@ code {
     75% {
         transform: translateX(5px);
     }
+}
+
+/* 笔记统计项样式 */
+.note-stats-item {
+    background: white;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    margin: 0.25rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border: 1px solid #f1f3f4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
 }
 
 /* 成功/错误消息样式 */

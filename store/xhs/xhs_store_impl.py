@@ -20,8 +20,6 @@ import os
 import pathlib
 from typing import Dict
 
-import aiofiles
-
 import config
 from base.base_crawler import AbstractStore
 from tools import utils, words
@@ -70,12 +68,29 @@ class XhsCsvStoreImplement(AbstractStore):
         """
         pathlib.Path(self.csv_store_path).mkdir(parents=True, exist_ok=True)
         save_file_name = self.make_save_file_name(store_type=store_type)
-        async with aiofiles.open(save_file_name, mode='a+', encoding="utf-8-sig", newline="") as f:
-            f.fileno()
-            writer = csv.writer(f)
-            if await f.tell() == 0:
-                await writer.writerow(save_item.keys())
-            await writer.writerow(save_item.values())
+        
+        # 使用同步方式写入CSV文件，避免权限问题
+        file_exists = os.path.exists(save_file_name) and os.path.getsize(save_file_name) > 0
+        
+        try:
+            with open(save_file_name, mode='a', encoding="utf-8-sig", newline="") as f:
+                writer = csv.writer(f)
+                # 如果文件不存在或为空，写入表头
+                if not file_exists:
+                    writer.writerow(save_item.keys())
+                # 写入数据行
+                writer.writerow(save_item.values())
+        except PermissionError as e:
+            # 如果遇到权限错误，尝试创建新的文件名
+            import time
+            timestamp = int(time.time())
+            new_file_name = save_file_name.replace('.csv', f'_{timestamp}.csv')
+            utils.logger.warning(f"Permission denied for {save_file_name}, creating new file: {new_file_name}")
+            
+            with open(new_file_name, mode='w', encoding="utf-8-sig", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(save_item.keys())
+                writer.writerow(save_item.values())
 
     async def store_content(self, content_item: Dict):
         """

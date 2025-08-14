@@ -313,6 +313,136 @@ def view_data():
     """数据查看页面"""
     return render_template('data.html')
 
+@app.route('/creators')
+def view_creators():
+    """创作者数据查看页面"""
+    return render_template('creators.html')
+
+def safe_convert_to_text(value):
+    """安全地将数值转换为文本格式，保持原始格式"""
+    import pandas as pd
+    if pd.isna(value) or value is None:
+        return '0'
+    return str(value)
+
+def safe_convert_to_int(value):
+    """安全地将数值转换为整数，处理包含中文单位的情况"""
+    if pd.isna(value) or value is None:
+        return 0
+    
+    # 如果已经是数字类型，直接返回
+    if isinstance(value, (int, float)):
+        return int(value)
+    
+    # 转换为字符串处理
+    str_value = str(value).strip()
+    
+    # 如果是空字符串，返回0
+    if not str_value:
+        return 0
+    
+    # 尝试直接转换为整数
+    try:
+        return int(float(str_value))
+    except ValueError:
+        # 如果包含中文单位，返回0（或者可以选择保持原始字符串）
+        return 0
+
+@app.route('/api/creators')
+def get_creators():
+    """获取创作者列表API"""
+    try:
+        import pandas as pd
+        import glob
+        
+        # 查找所有小红书CSV文件
+        csv_files = glob.glob('data/xhs/*_creator_contents_*.csv')
+        if not csv_files:
+            return jsonify({'success': True, 'creators': []})
+        
+        # 读取最新的CSV文件
+        latest_file = max(csv_files, key=os.path.getmtime)
+        df = pd.read_csv(latest_file)
+        
+        # 按创作者分组，获取每个创作者的基本信息
+        creators_data = df.groupby('user_id').agg({
+            'nickname': 'first',
+            'avatar': 'first', 
+            'ip_location': 'first',
+            'note_id': 'count',  # 笔记数量
+            'liked_count': 'first',  # 改为first，避免sum操作导致的类型问题
+            'collected_count': 'first',  # 改为first
+            'comment_count': 'first',  # 改为first
+            'last_modify_ts': 'max'  # 最后更新时间
+        }).reset_index()
+        
+        creators = []
+        for _, row in creators_data.iterrows():
+            creators.append({
+                'user_id': row['user_id'],
+                'nickname': row['nickname'],
+                'avatar': row['avatar'],
+                'ip_location': row['ip_location'],
+                'note_count': int(row['note_id']),  # 笔记数量
+                'total_likes': safe_convert_to_text(row['liked_count']),  # 保持文本格式
+                'total_collections': safe_convert_to_text(row['collected_count']),  # 保持文本格式
+                'total_comments': safe_convert_to_text(row['comment_count']),  # 保持文本格式
+                'last_modify_ts': row['last_modify_ts']
+            })
+        
+        # 按最后更新时间排序
+        creators.sort(key=lambda x: x['last_modify_ts'], reverse=True)
+        
+        return jsonify({'success': True, 'creators': creators})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'加载创作者数据失败: {str(e)}'})
+
+@app.route('/api/creator/<user_id>/notes')
+def get_creator_notes(user_id):
+    """获取指定创作者的笔记列表API"""
+    try:
+        import pandas as pd
+        import glob
+        
+        # 查找所有小红书CSV文件
+        csv_files = glob.glob('data/xhs/*_creator_contents_*.csv')
+        if not csv_files:
+            return jsonify({'success': True, 'notes': []})
+        
+        # 读取最新的CSV文件
+        latest_file = max(csv_files, key=os.path.getmtime)
+        df = pd.read_csv(latest_file)
+        
+        # 筛选指定创作者的笔记
+        user_notes = df[df['user_id'] == user_id].copy()
+        
+        # 按时间排序（最新的在前）
+        user_notes = user_notes.sort_values('time', ascending=False)
+        
+        notes = []
+        for _, row in user_notes.iterrows():
+            notes.append({
+                'note_id': row['note_id'],
+                'title': row['title'] if pd.notna(row['title']) else '',
+                'desc': row['desc'] if pd.notna(row['desc']) else '',
+                'type': row['type'] if pd.notna(row['type']) else '',
+                'video_url': row['video_url'] if pd.notna(row['video_url']) else '',
+                'time': str(int(row['time'])) if pd.notna(row['time']) else '',
+                'last_update_time': str(int(row['last_update_time'])) if pd.notna(row['last_update_time']) else '',
+                'liked_count': safe_convert_to_text(row['liked_count']),
+                'collected_count': safe_convert_to_text(row['collected_count']),
+                'comment_count': safe_convert_to_text(row['comment_count']),
+                'share_count': safe_convert_to_text(row['share_count']),
+                'image_list': row['image_list'] if pd.notna(row['image_list']) else '',
+                'tag_list': row['tag_list'] if pd.notna(row['tag_list']) else '',
+                'note_url': row['note_url'] if pd.notna(row['note_url']) else '',
+                'ip_location': row['ip_location'] if pd.notna(row['ip_location']) else ''
+            })
+        
+        return jsonify({'success': True, 'notes': notes})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'加载笔记数据失败: {str(e)}'})
+
 @app.route('/api/data_files')
 def list_data_files():
     """获取数据文件列表"""
