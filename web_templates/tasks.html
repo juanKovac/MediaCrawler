@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务管理 - MediaCrawler Web</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-robot"></i>
+                MediaCrawler Web
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">首页</a>
+                <a class="nav-link active" href="/tasks">任务管理</a>
+                <a class="nav-link" href="/data">数据查看</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="bi bi-list-task"></i>
+                            任务管理
+                        </h4>
+                        <button class="btn btn-light btn-sm" onclick="refreshTasks()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            刷新
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="tasksContainer">
+                            <!-- 任务列表将在这里动态加载 -->
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">加载中...</span>
+                                </div>
+                                <p class="mt-2">正在加载任务列表...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务详情模态框 -->
+    <div class="modal fade" id="taskDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">任务详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="taskDetailContent">
+                    <!-- 任务详情内容将在这里显示 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 任务状态映射
+        const statusMap = {
+            'pending': { text: '等待中', class: 'warning', icon: 'clock' },
+            'running': { text: '运行中', class: 'info', icon: 'play-circle' },
+            'completed': { text: '已完成', class: 'success', icon: 'check-circle' },
+            'failed': { text: '失败', class: 'danger', icon: 'x-circle' },
+            'stopped': { text: '已停止', class: 'secondary', icon: 'stop-circle' }
+        };
+
+        // 平台名称映射
+        const platformMap = {
+            'xhs': '小红书',
+            'dy': '抖音',
+            'ks': '快手',
+            'bili': '哔哩哔哩',
+            'wb': '微博',
+            'tieba': '百度贴吧',
+            'zhihu': '知乎'
+        };
+
+        // 爬取类型映射
+        const crawlerTypeMap = {
+            'search': '关键词搜索',
+            'detail': '帖子详情',
+            'creator': '创作者主页'
+        };
+
+        // 刷新任务列表
+        function refreshTasks() {
+            fetch('/api/tasks')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderTasks(data.tasks);
+                    } else {
+                        showError('获取任务列表失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('网络错误，请检查连接');
+                });
+        }
+
+        // 渲染任务列表
+        function renderTasks(tasks) {
+            const container = document.getElementById('tasksContainer');
+            
+            if (tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox display-1 text-muted"></i>
+                        <p class="text-muted mt-2">暂无任务</p>
+                        <a href="/" class="btn btn-primary">创建新任务</a>
+                    </div>
+                `;
+                return;
+            }
+
+            // 按创建时间倒序排列
+            tasks.sort((a, b) => new Date(b.create_time) - new Date(a.create_time));
+
+            let html = '<div class="row">';
+            tasks.forEach(task => {
+                const status = statusMap[task.status] || { text: task.status, class: 'secondary', icon: 'question' };
+                const platform = platformMap[task.config.platform] || task.config.platform;
+                const crawlerType = crawlerTypeMap[task.config.crawler_type] || task.config.crawler_type;
+                
+                html += `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <small class="text-muted">${task.id.substring(0, 8)}...</small>
+                                <span class="badge bg-${status.class}">
+                                    <i class="bi bi-${status.icon}"></i>
+                                    ${status.text}
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="bi bi-globe"></i>
+                                    ${platform} - ${crawlerType}
+                                </h6>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar"></i>
+                                        创建时间: ${task.create_time}
+                                    </small>
+                                </p>
+                                ${task.config.keywords ? `
+                                    <p class="card-text">
+                                        <i class="bi bi-tags"></i>
+                                        关键词: ${task.config.keywords}
+                                    </p>
+                                ` : ''}
+                                <p class="card-text">
+                                    <small class="text-muted">${task.message || '无消息'}</small>
+                                </p>
+                            </div>
+                            <div class="card-footer">
+                                <div class="btn-group w-100" role="group">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="showTaskDetail('${task.id}')">
+                                        <i class="bi bi-eye"></i>
+                                        详情
+                                    </button>
+                                    ${task.status === 'running' ? `
+                                        <button class="btn btn-outline-danger btn-sm" onclick="stopTask('${task.id}')">
+                                            <i class="bi bi-stop"></i>
+                                            停止
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+
+        // 显示任务详情
+        function showTaskDetail(taskId) {
+            fetch(`/task_status/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderTaskDetail(data.task);
+                        new bootstrap.Modal(document.getElementById('taskDetailModal')).show();
+                    } else {
+                        showError('获取任务详情失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('网络错误，请检查连接');
+                });
+        }
+
+        // 渲染任务详情
+        function renderTaskDetail(task) {
+            const status = statusMap[task.status] || { text: task.status, class: 'secondary', icon: 'question' };
+            const platform = platformMap[task.config.platform] || task.config.platform;
+            const crawlerType = crawlerTypeMap[task.config.crawler_type] || task.config.crawler_type;
+            
+            const content = document.getElementById('taskDetailContent');
+            content.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>基本信息</h6>
+                        <table class="table table-sm">
+                            <tr><td>任务ID:</td><td><code>${task.id}</code></td></tr>
+                            <tr><td>状态:</td><td><span class="badge bg-${status.class}"><i class="bi bi-${status.icon}"></i> ${status.text}</span></td></tr>
+                            <tr><td>平台:</td><td>${platform}</td></tr>
+                            <tr><td>爬取类型:</td><td>${crawlerType}</td></tr>
+                            <tr><td>创建时间:</td><td>${task.create_time}</td></tr>
+                            ${task.start_time ? `<tr><td>开始时间:</td><td>${task.start_time}</td></tr>` : ''}
+                            ${task.end_time ? `<tr><td>结束时间:</td><td>${task.end_time}</td></tr>` : ''}
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>配置参数</h6>
+                        <table class="table table-sm">
+                            ${task.config.keywords ? `<tr><td>关键词:</td><td>${task.config.keywords}</td></tr>` : ''}
+                            <tr><td>起始页码:</td><td>${task.config.start_page}</td></tr>
+                            <tr><td>最大数量:</td><td>${task.config.max_notes_count}</td></tr>
+                            <tr><td>爬取评论:</td><td>${task.config.get_comments ? '是' : '否'}</td></tr>
+                            <tr><td>爬取二级评论:</td><td>${task.config.get_sub_comments ? '是' : '否'}</td></tr>
+                            <tr><td>保存方式:</td><td>${task.config.save_data_option}</td></tr>
+                        </table>
+                    </div>
+                </div>
+                ${task.message ? `
+                    <div class="mt-3">
+                        <h6>消息</h6>
+                        <div class="alert alert-info">${task.message}</div>
+                    </div>
+                ` : ''}
+                ${task.error ? `
+                    <div class="mt-3">
+                        <h6>错误信息</h6>
+                        <div class="alert alert-danger"><pre>${task.error}</pre></div>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        // 停止任务
+        function stopTask(taskId) {
+            if (!confirm('确定要停止这个任务吗？')) {
+                return;
+            }
+            
+            fetch(`/stop_task/${taskId}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showSuccess(data.message);
+                        refreshTasks();
+                    } else {
+                        showError(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('网络错误，请检查连接');
+                });
+        }
+
+        // 显示成功消息
+        function showSuccess(message) {
+            // 简单的成功提示
+            alert('成功: ' + message);
+        }
+
+        // 显示错误消息
+        function showError(message) {
+            // 简单的错误提示
+            alert('错误: ' + message);
+        }
+
+        // 页面加载完成后自动刷新任务列表
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshTasks();
+            
+            // 每10秒自动刷新一次
+            setInterval(refreshTasks, 10000);
+        });
+    </script>
+</body>
+</html>

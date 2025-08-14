@@ -89,6 +89,18 @@ CRAWLER_MAX_COMMENTS_COUNT_SINGLENOTES = 10
 # 老版本项目使用了 db, 则需参考 schema/tables.sql line 287 增加表字段
 ENABLE_GET_SUB_COMMENTS = False
 
+# ==================== 页面元素定位超时配置 ====================
+# 页面元素等待超时时间（毫秒）
+# 如果网络较慢或页面加载缓慢，可以适当增加这个值
+PAGE_ELEMENT_TIMEOUT = 30000  # 30秒
+
+# 登录按钮定位超时时间（毫秒）
+# 专门用于登录按钮的定位，可以设置更长的超时时间
+LOGIN_BUTTON_TIMEOUT = 15000  # 15秒
+
+# 二维码查找超时时间（毫秒）
+QRCODE_TIMEOUT = 10000  # 10秒
+
 # 词云相关
 # 是否开启生成评论词云图
 ENABLE_GET_WORDCLOUD = False

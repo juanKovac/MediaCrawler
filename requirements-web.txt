@@ -1,0 +1,62 @@
+# Web界面所需的依赖包
+# 基于原项目的requirements.txt，添加了Web服务相关的包
+
+# Web框架
+Flask==2.3.3
+Werkzeug==2.3.7
+
+# 原项目依赖（保持与原requirements.txt一致）
+Playwright==1.40.0
+aiofiles==23.2.1
+aiohttp==3.9.1
+aiosignal==1.3.1
+attrs==23.1.0
+certifi==2023.11.17
+charset-normalizer==3.3.2
+frozenlist==1.4.0
+greenlet==3.0.1
+idna==3.6
+multidict==6.0.4
+PyExecJS==1.5.1
+requests==2.31.0
+SQLAlchemy==2.0.23
+typing_extensions==4.8.0
+urllib3==2.1.0
+yarl==1.9.4
+openpyxl==3.1.2
+xlsxwriter==3.1.9
+retrying==1.3.4
+tenacity==8.2.3
+fake-useragent==1.4.0
+jieba==0.42.1
+wordcloud==1.9.2
+matplotlib==3.8.2
+numpy==1.26.2
+Pillow==10.1.0
+pandas==2.1.4
+pytz==2023.3.post1
+six==1.16.0
+contourpy==1.2.0
+cycler==0.12.1
+fonttools==4.46.0
+kiwisolver==1.4.5
+packaging==23.2
+pyparsing==2.4.7
+python-dateutil==2.8.2
+
+# 可选依赖（根据需要安装）
+# 如果需要使用MySQL数据库
+# PyMySQL==1.1.0
+
+# 如果需要使用PostgreSQL数据库
+# psycopg2-binary==2.9.9
+
+# 如果需要更好的JSON处理
+# ujson==5.8.0
+
+# 如果需要更好的日期时间处理
+# python-dateutil==2.8.2
+
+# 开发和调试工具（可选）
+# flask-cors==4.0.0  # 如果需要跨域支持
+# gunicorn==21.2.0   # 生产环境WSGI服务器

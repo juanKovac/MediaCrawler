@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaCrawler - 自媒体平台爬虫 Web 界面</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-robot"></i>
+                MediaCrawler Web
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">首页</a>
+                <a class="nav-link" href="/tasks">任务管理</a>
+                <a class="nav-link" href="/data">数据查看</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="bi bi-gear-fill"></i>
+                            爬虫配置
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="crawlerForm">
+                            <!-- 平台选择 -->
+                            <div class="mb-3">
+                                <label for="platform" class="form-label">
+                                    <i class="bi bi-globe"></i>
+                                    选择平台 *
+                                </label>
+                                <select class="form-select" id="platform" name="platform" required>
+                                    {% for key, value in platforms.items() %}
+                                    <option value="{{ key }}" {% if key == 'xhs' %}selected{% endif %}>{{ value }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- 登录方式 -->
+                            <div class="mb-3">
+                                <label for="login_type" class="form-label">
+                                    <i class="bi bi-person-check"></i>
+                                    登录方式 *
+                                </label>
+                                <select class="form-select" id="login_type" name="login_type" required>
+                                    {% for key, value in login_types.items() %}
+                                    <option value="{{ key }}" {% if key == 'qrcode' %}selected{% endif %}>{{ value }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">推荐使用二维码登录，更加安全便捷</div>
+                            </div>
+
+                            <!-- 爬取类型 -->
+                            <div class="mb-3">
+                                <label for="crawler_type" class="form-label">
+                                    <i class="bi bi-search"></i>
+                                    爬取类型 *
+                                </label>
+                                <select class="form-select" id="crawler_type" name="crawler_type" required>
+                                    {% for key, value in crawler_types.items() %}
+                                    <option value="{{ key }}" {% if key == 'search' %}selected{% endif %}>{{ value }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- 关键词输入 -->
+                            <div class="mb-3" id="keywords_group">
+                                <label for="keywords" class="form-label">
+                                    <i class="bi bi-tags"></i>
+                                    搜索关键词 *
+                                </label>
+                                <input type="text" class="form-control" id="keywords" name="keywords" 
+                                       placeholder="请输入关键词，多个关键词用英文逗号分隔">
+                                <div class="form-text">例如：编程副业,编程兼职</div>
+                            </div>
+
+                            <!-- 创作者用户ID输入（仅在创作者模式时显示） -->
+                            <div class="mb-3" id="creatorIdGroup" style="display: none;">
+                                <label for="creator_id" class="form-label">
+                                    <i class="bi bi-person"></i>
+                                    创作者用户ID *
+                                </label>
+                                <input type="text" class="form-control" id="creator_id" name="creator_id" 
+                                       placeholder="请输入小红书创作者的用户ID">
+                                <div class="form-text">
+                                    <small class="text-muted">
+                                        <i class="bi bi-info-circle"></i>
+                                        如何获取用户ID：打开创作者主页，查看URL中的用户ID部分，例如：https://www.xiaohongshu.com/user/profile/5ff0e4ac0000000001001234 中的 "5ff0e4ac0000000001001234"
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Cookie输入（仅在Cookie登录时显示） -->
+                            <div class="mb-3" id="cookies_group" style="display: none;">
+                                <label for="cookies" class="form-label">
+                                    <i class="bi bi-key"></i>
+                                    Cookie值
+                                </label>
+                                <textarea class="form-control" id="cookies" name="cookies" rows="3" 
+                                          placeholder="请输入Cookie值"></textarea>
+                                <div class="form-text">仅在选择Cookie登录方式时需要填写</div>
+                            </div>
+
+                            <!-- 高级设置 -->
+                            <div class="card mt-4">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-sliders"></i>
+                                        高级设置
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="start_page" class="form-label">起始页码</label>
+                                                <input type="number" class="form-control" id="start_page" name="start_page" 
+                                                       value="1" min="1">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="max_notes_count" class="form-label">最大爬取数量</label>
+                                                <input type="number" class="form-control" id="max_notes_count" name="max_notes_count" 
+                                                       value="20" min="1" max="1000">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="save_data_option" class="form-label">数据保存方式</label>
+                                        <select class="form-select" id="save_data_option" name="save_data_option">
+                                            {% for key, value in save_data_options.items() %}
+                                            <option value="{{ key }}" {% if key == 'json' %}selected{% endif %}>{{ value }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="get_comments" name="get_comments" checked>
+                                                <label class="form-check-label" for="get_comments">
+                                                    爬取评论
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="get_sub_comments" name="get_sub_comments">
+                                                <label class="form-check-label" for="get_sub_comments">
+                                                    爬取二级评论
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 提交按钮 -->
+                            <div class="d-grid gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg" id="startBtn">
+                                    <i class="bi bi-play-circle"></i>
+                                    开始爬取
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 使用说明 -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            使用说明
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <h6><i class="bi bi-lightbulb"></i> 温馨提示：</h6>
+                            <ul class="mb-0">
+                                <li><strong>二维码登录：</strong>启动后会弹出浏览器，使用对应APP扫码登录</li>
+                                <li><strong>关键词搜索：</strong>支持多个关键词，用英文逗号分隔</li>
+                                <li><strong>数据保存：</strong>推荐使用JSON格式，便于查看和处理</li>
+                                <li><strong>爬取数量：</strong>建议从小数量开始测试，避免被平台限制</li>
+                                <li><strong>合规使用：</strong>请遵守平台规则，仅用于学习研究目的</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结果模态框 -->
+    <div class="modal fade" id="resultModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">任务结果</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="resultContent">
+                    <!-- 结果内容将在这里显示 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <a href="/tasks" class="btn btn-primary">查看任务状态</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

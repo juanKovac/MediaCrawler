@@ -75,20 +75,61 @@ class XiaoHongShuLogin(AbstractLogin):
         await asyncio.sleep(1)
         try:
             # 小红书进入首页后，有可能不会自动弹出登录框，需要手动点击登录按钮
-            login_button_ele = await self.context_page.wait_for_selector(
-                selector="xpath=//*[@id='app']/div[1]/div[2]/div[1]/ul/div[1]/button",
-                timeout=5000
-            )
-            await login_button_ele.click()
+            # 使用多种定位策略来提高成功率
+            login_button_selectors = [
+                "xpath=//*[@id='app']/div[1]/div[2]/div[1]/ul/div[1]/button",
+                "xpath=//button[contains(text(), '登录')]",
+                "xpath=//div[contains(@class, 'login')]//button",
+                "css=button[class*='login']",
+                "css=.login-btn"
+            ]
+            
+            login_button_ele = None
+            for selector in login_button_selectors:
+                try:
+                    utils.logger.info(f"[XiaoHongShuLogin.login_by_mobile] 尝试定位登录按钮: {selector}")
+                    login_button_ele = await self.context_page.wait_for_selector(
+                        selector=selector,
+                        timeout=config.LOGIN_BUTTON_TIMEOUT
+                    )
+                    if login_button_ele:
+                        utils.logger.info(f"[XiaoHongShuLogin.login_by_mobile] 成功找到登录按钮: {selector}")
+                        break
+                except Exception as e:
+                    utils.logger.debug(f"[XiaoHongShuLogin.login_by_mobile] 定位器 {selector} 失败: {e}")
+                    continue
+            
+            if login_button_ele:
+                await login_button_ele.click()
+                utils.logger.info("[XiaoHongShuLogin.login_by_mobile] 成功点击登录按钮")
+            else:
+                utils.logger.warning("[XiaoHongShuLogin.login_by_mobile] 未找到登录按钮，可能页面已显示登录框")
+            
             # 弹窗的登录对话框也有两种形态，一种是直接可以看到手机号和验证码的
             # 另一种是需要点击切换到手机登录的
-            element = await self.context_page.wait_for_selector(
-                selector='xpath=//div[@class="login-container"]//div[@class="other-method"]/div[1]',
-                timeout=5000
-            )
-            await element.click()
+            mobile_login_selectors = [
+                'xpath=//div[@class="login-container"]//div[@class="other-method"]/div[1]',
+                'xpath=//div[contains(@class, "other-method")]//div[1]',
+                'xpath=//span[contains(text(), "手机号登录")]',
+                'css=.other-method div:first-child'
+            ]
+            
+            for selector in mobile_login_selectors:
+                try:
+                    element = await self.context_page.wait_for_selector(
+                        selector=selector,
+                        timeout=config.PAGE_ELEMENT_TIMEOUT
+                    )
+                    if element:
+                        await element.click()
+                        utils.logger.info(f"[XiaoHongShuLogin.login_by_mobile] 成功切换到手机登录: {selector}")
+                        break
+                except Exception as e:
+                    utils.logger.debug(f"[XiaoHongShuLogin.login_by_mobile] 切换手机登录失败 {selector}: {e}")
+                    continue
+                    
         except Exception as e:
-            utils.logger.info("[XiaoHongShuLogin.login_by_mobile] have not found mobile button icon and keep going ...")
+            utils.logger.warning(f"[XiaoHongShuLogin.login_by_mobile] 登录按钮处理异常: {e}，继续执行后续步骤...")
 
         await asyncio.sleep(1)
         login_container_ele = await self.context_page.wait_for_selector("div.login-container")
@@ -140,24 +181,77 @@ class XiaoHongShuLogin(AbstractLogin):
     async def login_by_qrcode(self):
         """login xiaohongshu website and keep webdriver login state"""
         utils.logger.info("[XiaoHongShuLogin.login_by_qrcode] Begin login xiaohongshu by qrcode ...")
-        # login_selector = "div.login-container > div.left > div.qrcode > img"
-        qrcode_img_selector = "xpath=//img[@class='qrcode-img']"
+        # 多种二维码定位策略
+        qrcode_selectors = [
+            "xpath=//img[@class='qrcode-img']",
+            "xpath=//img[contains(@class, 'qrcode')]",
+            "css=img.qrcode-img",
+            "css=.qrcode img",
+            "xpath=//div[contains(@class, 'qrcode')]//img"
+        ]
+        
         # find login qrcode
-        base64_qrcode_img = await utils.find_login_qrcode(
-            self.context_page,
-            selector=qrcode_img_selector
-        )
+        base64_qrcode_img = None
+        for qrcode_selector in qrcode_selectors:
+            try:
+                utils.logger.info(f"[XiaoHongShuLogin.login_by_qrcode] 尝试查找二维码: {qrcode_selector}")
+                base64_qrcode_img = await utils.find_login_qrcode(
+                    self.context_page,
+                    selector=qrcode_selector
+                )
+                if base64_qrcode_img:
+                    utils.logger.info(f"[XiaoHongShuLogin.login_by_qrcode] 成功找到二维码: {qrcode_selector}")
+                    break
+            except Exception as e:
+                utils.logger.debug(f"[XiaoHongShuLogin.login_by_qrcode] 二维码定位失败 {qrcode_selector}: {e}")
+                continue
+        
         if not base64_qrcode_img:
-            utils.logger.info("[XiaoHongShuLogin.login_by_qrcode] login failed , have not found qrcode please check ....")
+            utils.logger.info("[XiaoHongShuLogin.login_by_qrcode] 未找到二维码，尝试点击登录按钮...")
             # if this website does not automatically popup login dialog box, we will manual click login button
             await asyncio.sleep(0.5)
-            login_button_ele = self.context_page.locator("xpath=//*[@id='app']/div[1]/div[2]/div[1]/ul/div[1]/button")
-            await login_button_ele.click()
-            base64_qrcode_img = await utils.find_login_qrcode(
-                self.context_page,
-                selector=qrcode_img_selector
-            )
+            
+            # 使用多种登录按钮定位策略
+            login_button_selectors = [
+                "xpath=//*[@id='app']/div[1]/div[2]/div[1]/ul/div[1]/button",
+                "xpath=//button[contains(text(), '登录')]",
+                "xpath=//div[contains(@class, 'login')]//button",
+                "css=button[class*='login']",
+                "css=.login-btn"
+            ]
+            
+            login_success = False
+            for selector in login_button_selectors:
+                try:
+                    utils.logger.info(f"[XiaoHongShuLogin.login_by_qrcode] 尝试点击登录按钮: {selector}")
+                    login_button_ele = self.context_page.locator(selector)
+                    await login_button_ele.click(timeout=config.LOGIN_BUTTON_TIMEOUT)  # 使用配置的超时时间
+                    await asyncio.sleep(1)  # 等待页面响应
+                    
+                    # 重新尝试查找二维码
+                    for qrcode_selector in qrcode_selectors:
+                        try:
+                            base64_qrcode_img = await utils.find_login_qrcode(
+                                self.context_page,
+                                selector=qrcode_selector
+                            )
+                            if base64_qrcode_img:
+                                utils.logger.info(f"[XiaoHongShuLogin.login_by_qrcode] 点击登录按钮后找到二维码: {qrcode_selector}")
+                                login_success = True
+                                break
+                        except Exception:
+                            continue
+                    
+                    if login_success:
+                        break
+                        
+                except Exception as e:
+                    utils.logger.debug(f"[XiaoHongShuLogin.login_by_qrcode] 登录按钮点击失败 {selector}: {e}")
+                    continue
+            
             if not base64_qrcode_img:
+                utils.logger.error("[XiaoHongShuLogin.login_by_qrcode] 所有尝试都失败了，无法找到登录二维码")
+                utils.logger.error("[XiaoHongShuLogin.login_by_qrcode] 建议检查：1.网络连接 2.页面是否正常加载 3.是否需要手动刷新页面")
                 sys.exit()
 
         # get not logged session

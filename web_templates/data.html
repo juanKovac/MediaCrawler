@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据查看 - MediaCrawler Web</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-robot"></i>
+                MediaCrawler Web
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">首页</a>
+                <a class="nav-link" href="/tasks">任务管理</a>
+                <a class="nav-link active" href="/data">数据查看</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="bi bi-database"></i>
+                            数据文件管理
+                        </h4>
+                        <button class="btn btn-light btn-sm" onclick="refreshFiles()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            刷新
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="filesContainer">
+                            <!-- 文件列表将在这里动态加载 -->
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">加载中...</span>
+                                </div>
+                                <p class="mt-2">正在加载文件列表...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 使用说明 -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            数据说明
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="bi bi-file-earmark-text"></i> JSON 格式</h6>
+                                <p class="text-muted">结构化数据，便于程序处理和分析，包含完整的帖子信息和评论数据。</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="bi bi-file-earmark-spreadsheet"></i> CSV 格式</h6>
+                                <p class="text-muted">表格格式，可直接用Excel打开，适合数据分析和统计。</p>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning mt-3">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>注意：</strong>请遵守相关法律法规，仅将爬取的数据用于学习和研究目的，不得用于商业用途。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文件预览模态框 -->
+    <div class="modal fade" id="previewModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">文件预览</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="previewContent" style="max-height: 500px; overflow-y: auto;">
+                        <!-- 预览内容将在这里显示 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="downloadBtn">
+                        <i class="bi bi-download"></i>
+                        下载文件
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentFileName = '';
+
+        // 刷新文件列表
+        function refreshFiles() {
+            fetch('/api/data_files')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderFiles(data.files);
+                    } else {
+                        showError('获取文件列表失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('网络错误，请检查连接');
+                });
+        }
+
+        // 渲染文件列表
+        function renderFiles(files) {
+            const container = document.getElementById('filesContainer');
+            
+            if (files.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="bi bi-folder-x display-1 text-muted"></i>
+                        <p class="text-muted mt-2">暂无数据文件</p>
+                        <p class="text-muted">请先运行爬虫任务生成数据</p>
+                        <a href="/" class="btn btn-primary">开始爬取</a>
+                    </div>
+                `;
+                return;
+            }
+
+            // 按修改时间倒序排列
+            files.sort((a, b) => new Date(b.modified) - new Date(a.modified));
+
+            let html = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th><i class="bi bi-file-earmark"></i> 文件名</th>
+                                <th><i class="bi bi-hdd"></i> 大小</th>
+                                <th><i class="bi bi-calendar"></i> 修改时间</th>
+                                <th><i class="bi bi-gear"></i> 操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            files.forEach(file => {
+                const fileSize = formatFileSize(file.size);
+                const fileIcon = getFileIcon(file.name);
+                
+                html += `
+                    <tr>
+                        <td>
+                            <i class="bi bi-${fileIcon}"></i>
+                            ${file.name}
+                        </td>
+                        <td>${fileSize}</td>
+                        <td>${file.modified}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-outline-primary btn-sm" onclick="previewFile('${file.name}')">
+                                    <i class="bi bi-eye"></i>
+                                    预览
+                                </button>
+                                <a href="/download/${file.name}" class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-download"></i>
+                                    下载
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 获取文件图标
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            switch (ext) {
+                case 'json':
+                    return 'file-earmark-code';
+                case 'csv':
+                    return 'file-earmark-spreadsheet';
+                default:
+                    return 'file-earmark';
+            }
+        }
+
+        // 预览文件
+        function previewFile(filename) {
+            currentFileName = filename;
+            const previewContent = document.getElementById('previewContent');
+            
+            // 显示加载状态
+            previewContent.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p class="mt-2">正在加载文件内容...</p>
+                </div>
+            `;
+            
+            // 显示模态框
+            new bootstrap.Modal(document.getElementById('previewModal')).show();
+            
+            // 获取文件内容（这里简化处理，实际应该通过API获取）
+            fetch(`/download/${filename}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('文件加载失败');
+                    }
+                    return response.text();
+                })
+                .then(content => {
+                    renderPreview(filename, content);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    previewContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            文件预览失败: ${error.message}
+                        </div>
+                    `;
+                });
+        }
+
+        // 渲染文件预览
+        function renderPreview(filename, content) {
+            const previewContent = document.getElementById('previewContent');
+            const ext = filename.split('.').pop().toLowerCase();
+            
+            if (ext === 'json') {
+                try {
+                    const jsonData = JSON.parse(content);
+                    const formattedJson = JSON.stringify(jsonData, null, 2);
+                    previewContent.innerHTML = `
+                        <div class="mb-3">
+                            <h6><i class="bi bi-file-earmark-code"></i> ${filename}</h6>
+                            <p class="text-muted">JSON 格式数据预览（仅显示前1000行）</p>
+                        </div>
+                        <pre class="bg-light p-3 rounded"><code>${escapeHtml(formattedJson.split('\n').slice(0, 1000).join('\n'))}</code></pre>
+                    `;
+                } catch (e) {
+                    previewContent.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            JSON 格式解析失败，显示原始内容
+                        </div>
+                        <pre class="bg-light p-3 rounded"><code>${escapeHtml(content.substring(0, 5000))}</code></pre>
+                    `;
+                }
+            } else if (ext === 'csv') {
+                const lines = content.split('\n').slice(0, 100); // 只显示前100行
+                previewContent.innerHTML = `
+                    <div class="mb-3">
+                        <h6><i class="bi bi-file-earmark-spreadsheet"></i> ${filename}</h6>
+                        <p class="text-muted">CSV 格式数据预览（仅显示前100行）</p>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            ${renderCsvTable(lines)}
+                        </table>
+                    </div>
+                `;
+            } else {
+                previewContent.innerHTML = `
+                    <div class="mb-3">
+                        <h6><i class="bi bi-file-earmark"></i> ${filename}</h6>
+                        <p class="text-muted">文本内容预览（仅显示前5000字符）</p>
+                    </div>
+                    <pre class="bg-light p-3 rounded"><code>${escapeHtml(content.substring(0, 5000))}</code></pre>
+                `;
+            }
+        }
+
+        // 渲染CSV表格
+        function renderCsvTable(lines) {
+            if (lines.length === 0) return '<tr><td>无数据</td></tr>';
+            
+            let html = '';
+            lines.forEach((line, index) => {
+                if (line.trim() === '') return;
+                
+                const cells = line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+                const tag = index === 0 ? 'th' : 'td';
+                
+                html += '<tr>';
+                cells.forEach(cell => {
+                    html += `<${tag}>${escapeHtml(cell)}</${tag}>`;
+                });
+                html += '</tr>';
+            });
+            
+            return html;
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 显示错误消息
+        function showError(message) {
+            const container = document.getElementById('filesContainer');
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    ${message}
+                </div>
+            `;
+        }
+
+        // 设置下载按钮
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            if (currentFileName) {
+                window.open(`/download/${currentFileName}`, '_blank');
+            }
+        });
+
+        // 页面加载完成后自动刷新文件列表
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshFiles();
+        });
+    </script>
+</body>
+</html>
