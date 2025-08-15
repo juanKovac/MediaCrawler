@@ -19,6 +19,8 @@ import time
 from datetime import datetime
 import sys
 from typing import Dict, Any, Optional
+import pandas as pd
+import glob
 
 # 导入原有的爬虫模块
 import config
@@ -354,44 +356,96 @@ def get_creators():
     try:
         import pandas as pd
         import glob
+        import json
+        from datetime import datetime
         
-        # 查找所有小红书CSV文件
-        csv_files = glob.glob('data/xhs/*_creator_contents_*.csv')
-        if not csv_files:
+        # 查找创作者详细信息文件
+        creator_files = glob.glob('data/xhs/*_creator_creator_*.csv')
+        if not creator_files:
             return jsonify({'success': True, 'creators': []})
         
-        # 读取最新的CSV文件
-        latest_file = max(csv_files, key=os.path.getmtime)
-        df = pd.read_csv(latest_file)
+        # 读取所有创作者文件并合并
+        all_creator_data = []
+        for file_path in creator_files:
+            try:
+                df = pd.read_csv(file_path)
+                # 添加文件修改时间作为数据更新时间
+                file_mtime = os.path.getmtime(file_path)
+                df['data_update_time'] = file_mtime
+                all_creator_data.append(df)
+            except Exception as e:
+                print(f"读取文件 {file_path} 失败: {e}")
+                continue
         
-        # 按创作者分组，获取每个创作者的基本信息
-        creators_data = df.groupby('user_id').agg({
-            'nickname': 'first',
-            'avatar': 'first', 
-            'ip_location': 'first',
-            'note_id': 'count',  # 笔记数量
-            'liked_count': 'first',  # 改为first，避免sum操作导致的类型问题
-            'collected_count': 'first',  # 改为first
-            'comment_count': 'first',  # 改为first
-            'last_modify_ts': 'max'  # 最后更新时间
-        }).reset_index()
+        if not all_creator_data:
+            return jsonify({'success': True, 'creators': []})
+        
+        # 合并所有数据
+        creator_df = pd.concat(all_creator_data, ignore_index=True)
+        
+        # 按user_id分组，保留最新的数据（基于data_update_time）
+        creator_df = creator_df.sort_values('data_update_time').groupby('user_id').tail(1).reset_index(drop=True)
+        
+        # 查找内容文件来获取笔记数量
+        content_files = glob.glob('data/xhs/*_creator_contents_*.csv')
+        note_counts = {}
+        if content_files:
+            all_content_data = []
+            for file_path in content_files:
+                try:
+                    df = pd.read_csv(file_path)
+                    all_content_data.append(df)
+                except Exception as e:
+                    continue
+            
+            if all_content_data:
+                content_df = pd.concat(all_content_data, ignore_index=True)
+                # 去重并统计笔记数量
+                content_df = content_df.drop_duplicates(subset=['note_id'])
+                note_counts = content_df.groupby('user_id').size().to_dict()
         
         creators = []
-        for _, row in creators_data.iterrows():
+        for _, row in creator_df.iterrows():
+            # 解析tag_list JSON字符串
+            tag_info = {}
+            try:
+                if pd.notna(row.get('tag_list')) and row['tag_list'].strip():
+                    tag_info = json.loads(row['tag_list'])
+            except (json.JSONDecodeError, AttributeError):
+                tag_info = {}
+            
+            # 格式化数据更新时间
+            update_time = datetime.fromtimestamp(row['data_update_time']).strftime('%Y-%m-%d %H:%M:%S')
+            
+            # 安全处理可能包含NaN的字段
+            def safe_get_value(value, default=''):
+                if pd.isna(value) or value is None:
+                    return default
+                return str(value) if value != '' else default
+            
             creators.append({
-                'user_id': row['user_id'],
-                'nickname': row['nickname'],
-                'avatar': row['avatar'],
-                'ip_location': row['ip_location'],
-                'note_count': int(row['note_id']),  # 笔记数量
-                'total_likes': safe_convert_to_text(row['liked_count']),  # 保持文本格式
-                'total_collections': safe_convert_to_text(row['collected_count']),  # 保持文本格式
-                'total_comments': safe_convert_to_text(row['comment_count']),  # 保持文本格式
-                'last_modify_ts': row['last_modify_ts']
+                'user_id': safe_get_value(row['user_id']),
+                'nickname': safe_get_value(row['nickname']),
+                'avatar': safe_get_value(row['avatar']),
+                'desc': safe_get_value(row.get('desc', '')),  # 简介
+                'ip_location': safe_get_value(row.get('ip_location', '')),
+                'follows': safe_convert_to_int(row.get('follows', 0)),  # 关注数
+                'fans': safe_convert_to_int(row.get('fans', 0)),  # 粉丝数
+                'interaction': safe_convert_to_int(row.get('interaction', 0)),  # 总互动数
+                'note_count': note_counts.get(row['user_id'], 0),  # 笔记数量
+                'last_modify_ts': safe_convert_to_int(row.get('last_modify_ts', 0)),
+                'data_update_time': update_time,  # 数据更新时间
+                'gender': safe_get_value(row.get('gender', '')),  # 性别
+                'tag_list': tag_info,  # 标签信息
+                # 额外信息（年龄、地区、职业、学校等）
+                'age': tag_info.get('info', ''),
+                'location': tag_info.get('location', ''),
+                'profession': tag_info.get('profession', ''),
+                'college': tag_info.get('college', '')
             })
         
-        # 按最后更新时间排序
-        creators.sort(key=lambda x: x['last_modify_ts'], reverse=True)
+        # 按粉丝数排序
+        creators.sort(key=lambda x: x['fans'], reverse=True)
         
         return jsonify({'success': True, 'creators': creators})
     except Exception as e:
