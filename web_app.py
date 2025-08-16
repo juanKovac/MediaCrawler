@@ -384,6 +384,7 @@ def get_creators():
         creator_df = pd.concat(all_creator_data, ignore_index=True)
         
         # 按user_id分组，保留最新的数据（基于data_update_time）
+        # 但确保所有创作者都能显示，即使他们不在最新文件中
         creator_df = creator_df.sort_values('data_update_time').groupby('user_id').tail(1).reset_index(drop=True)
         
         # 查找内容文件来获取笔记数量
@@ -458,20 +459,80 @@ def get_creator_notes(user_id):
         import pandas as pd
         import glob
         
+        # 获取排序参数
+        sort_by = request.args.get('sort_by', 'time')  # 默认按时间排序
+        sort_order = request.args.get('sort_order', 'desc')  # 默认降序
+        
         # 查找所有小红书CSV文件
         csv_files = glob.glob('data/xhs/*_creator_contents_*.csv')
         if not csv_files:
             return jsonify({'success': True, 'notes': []})
         
-        # 读取最新的CSV文件
-        latest_file = max(csv_files, key=os.path.getmtime)
-        df = pd.read_csv(latest_file)
+        # 读取所有CSV文件并合并
+        all_content_data = []
+        for file_path in csv_files:
+            try:
+                df = pd.read_csv(file_path)
+                all_content_data.append(df)
+            except Exception as e:
+                print(f"读取文件 {file_path} 失败: {e}")
+                continue
+        
+        if not all_content_data:
+            return jsonify({'success': True, 'notes': []})
+        
+        # 合并所有数据
+        df = pd.concat(all_content_data, ignore_index=True)
+        
+        # 去重，保留每个note_id的最新数据
+        df = df.drop_duplicates(subset=['note_id'], keep='last')
         
         # 筛选指定创作者的笔记
         user_notes = df[df['user_id'] == user_id].copy()
         
-        # 按时间排序（最新的在前）
-        user_notes = user_notes.sort_values('time', ascending=False)
+        # 处理排序字段的数据类型转换
+        def convert_count_to_number(value):
+            """将包含中文单位的数值转换为数字用于排序"""
+            if pd.isna(value) or value == '':
+                return 0
+            
+            str_value = str(value)
+            if '万' in str_value:
+                try:
+                    return float(str_value.replace('万', '')) * 10000
+                except:
+                    return 0
+            elif '千' in str_value:
+                try:
+                    return float(str_value.replace('千', '')) * 1000
+                except:
+                    return 0
+            else:
+                try:
+                    return float(str_value)
+                except:
+                    return 0
+        
+        # 根据排序字段进行数据处理
+        if sort_by in ['liked_count', 'collected_count', 'comment_count', 'share_count']:
+            # 为数值字段创建临时排序列，直接转换为数值类型
+            user_notes[f'{sort_by}_numeric'] = pd.to_numeric(user_notes[sort_by], errors='coerce').fillna(0)
+            sort_column = f'{sort_by}_numeric'
+        elif sort_by == 'time':
+            # 时间字段转换为数值类型进行排序
+            user_notes['time_numeric'] = pd.to_numeric(user_notes['time'], errors='coerce').fillna(0)
+            sort_column = 'time_numeric'
+        else:
+            sort_column = sort_by
+        
+        # 执行排序
+        ascending = (sort_order == 'asc')
+        if sort_column in user_notes.columns:
+            user_notes = user_notes.sort_values(sort_column, ascending=ascending)
+        else:
+            # 如果排序字段不存在，默认按时间排序
+            user_notes['time_numeric'] = pd.to_numeric(user_notes['time'], errors='coerce').fillna(0)
+            user_notes = user_notes.sort_values('time_numeric', ascending=False)
         
         notes = []
         for _, row in user_notes.iterrows():

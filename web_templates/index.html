@@ -38,42 +38,63 @@
                         <form id="crawlerForm">
                             <!-- 平台选择 -->
                             <div class="mb-3">
-                                <label for="platform" class="form-label">
+                                <label class="form-label">
                                     <i class="bi bi-globe"></i>
                                     选择平台 *
                                 </label>
-                                <select class="form-select" id="platform" name="platform" required>
+                                <div class="row">
                                     {% for key, value in platforms.items() %}
-                                    <option value="{{ key }}" {% if key == 'xhs' %}selected{% endif %}>{{ value }}</option>
+                                    <div class="col-md-4 col-sm-6 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="platform" id="platform_{{ key }}" value="{{ key }}" {% if key == 'xhs' %}checked{% endif %} required>
+                                            <label class="form-check-label" for="platform_{{ key }}">
+                                                {{ value }}
+                                            </label>
+                                        </div>
+                                    </div>
                                     {% endfor %}
-                                </select>
+                                </div>
                             </div>
 
                             <!-- 登录方式 -->
                             <div class="mb-3">
-                                <label for="login_type" class="form-label">
+                                <label class="form-label">
                                     <i class="bi bi-person-check"></i>
                                     登录方式 *
                                 </label>
-                                <select class="form-select" id="login_type" name="login_type" required>
+                                <div class="row">
                                     {% for key, value in login_types.items() %}
-                                    <option value="{{ key }}" {% if key == 'qrcode' %}selected{% endif %}>{{ value }}</option>
+                                    <div class="col-md-4 col-sm-6 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="login_type" id="login_type_{{ key }}" value="{{ key }}" {% if key == 'qrcode' %}checked{% endif %} required>
+                                            <label class="form-check-label" for="login_type_{{ key }}">
+                                                {{ value }}
+                                            </label>
+                                        </div>
+                                    </div>
                                     {% endfor %}
-                                </select>
+                                </div>
                                 <div class="form-text">推荐使用二维码登录，更加安全便捷</div>
                             </div>
 
                             <!-- 爬取类型 -->
                             <div class="mb-3">
-                                <label for="crawler_type" class="form-label">
+                                <label class="form-label">
                                     <i class="bi bi-search"></i>
                                     爬取类型 *
                                 </label>
-                                <select class="form-select" id="crawler_type" name="crawler_type" required>
+                                <div class="row">
                                     {% for key, value in crawler_types.items() %}
-                                    <option value="{{ key }}" {% if key == 'search' %}selected{% endif %}>{{ value }}</option>
+                                    <div class="col-md-4 col-sm-6 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="crawler_type" id="crawler_type_{{ key }}" value="{{ key }}" {% if key == 'search' %}checked{% endif %} required>
+                                            <label class="form-check-label" for="crawler_type_{{ key }}">
+                                                {{ value }}
+                                            </label>
+                                        </div>
+                                    </div>
                                     {% endfor %}
-                                </select>
+                                </div>
                             </div>
 
                             <!-- 关键词输入 -->
@@ -141,12 +162,23 @@
                                     </div>
 
                                     <div class="mb-3">
-                                        <label for="save_data_option" class="form-label">数据保存方式</label>
-                                        <select class="form-select" id="save_data_option" name="save_data_option">
+                                        <label class="form-label">
+                                            <i class="bi bi-save"></i>
+                                            数据保存方式
+                                        </label>
+                                        <div class="row">
                                             {% for key, value in save_data_options.items() %}
-                                            <option value="{{ key }}" {% if key == 'json' %}selected{% endif %}>{{ value }}</option>
+                                            <div class="col-md-6 col-sm-12 mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="save_data_option" id="save_data_option_{{ key }}" value="{{ key }}" {% if key == 'json' %}checked{% endif %}>
+                                                    <label class="form-check-label" for="save_data_option_{{ key }}">
+                                                        {{ value }}
+                                                    </label>
+                                                </div>
+                                            </div>
                                             {% endfor %}
-                                        </select>
+                                        </div>
+                                        <div class="form-text">选择数据的保存格式</div>
                                     </div>
 
                                     <div class="row">

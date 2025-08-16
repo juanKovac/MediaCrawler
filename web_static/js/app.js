@@ -52,16 +52,16 @@ function getCurrentPage() {
 // 初始化首页
 function initializeHomePage() {
     // 绑定平台选择变化事件
-    const platformSelect = document.getElementById('platform');
-    if (platformSelect) {
-        platformSelect.addEventListener('change', handlePlatformChange);
-    }
+    const platformRadios = document.querySelectorAll('input[name="platform"]');
+    platformRadios.forEach(radio => {
+        radio.addEventListener('change', handlePlatformChange);
+    });
 
     // 绑定爬取类型变化事件
-    const crawlerTypeSelect = document.getElementById('crawler_type');
-    if (crawlerTypeSelect) {
-        crawlerTypeSelect.addEventListener('change', handleCrawlerTypeChange);
-    }
+    const crawlerTypeRadios = document.querySelectorAll('input[name="crawler_type"]');
+    crawlerTypeRadios.forEach(radio => {
+        radio.addEventListener('change', handleCrawlerTypeChange);
+    });
 
     // 初始化表单验证
     initializeFormValidation();
@@ -121,14 +121,26 @@ function handleFormSubmit(event) {
 
 // 表单验证
 function validateForm() {
-    const platform = document.getElementById('platform').value;
-    const crawlerType = document.getElementById('crawler_type').value;
+    // 获取选中的平台radio按钮值
+    const platformRadio = document.querySelector('input[name="platform"]:checked');
+    const platform = platformRadio ? platformRadio.value : '';
+    
+    // 获取选中的爬取类型radio按钮值
+    const crawlerTypeRadio = document.querySelector('input[name="crawler_type"]:checked');
+    const crawlerType = crawlerTypeRadio ? crawlerTypeRadio.value : '';
+    
     const keywords = document.getElementById('keywords').value.trim();
     const creatorId = document.getElementById('creator_id').value.trim();
     
     // 验证平台选择
     if (!platform) {
         showMessage('请选择爬取平台', 'error');
+        return false;
+    }
+    
+    // 验证爬取类型选择
+    if (!crawlerType) {
+        showMessage('请选择爬取类型', 'error');
         return false;
     }
     
